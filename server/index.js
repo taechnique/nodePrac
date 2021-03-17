@@ -5,7 +5,7 @@ const port = 5000
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 const config = require('./config/key')
-
+const { auth } = require('./middleware/auth')
 const { User } = require("./models/User")
 
 
@@ -29,7 +29,11 @@ app.get('/', (req, res) => {
     res.send('Hello World dd!')
 })
 
-app.post('/register',(req,res) => {
+app.get('/api/hello',(req,res) =>{
+    res.send('안녕하세요.')
+})
+
+app.post('/api/users/register',(req,res) => {
     const user = new User(req.body)
 
     user.save((err,userInfo) => {
@@ -40,7 +44,7 @@ app.post('/register',(req,res) => {
     })
 })
 
-app.post('/login',(req,res) =>{
+app.post('/api/users/login',(req,res) =>{
     //요청된 이메일을 데이터베이스에서 중복확인
     User.findOne({email: req.body.email },(err,user) => {
         if(!user) {
@@ -53,20 +57,46 @@ app.post('/login',(req,res) =>{
         user.comparePassword(req.body.password,(err,isMatch) => {
             if(!isMatch)
                 return res.json({loginSuccess: false, message:"비밀번호가 틀림"})
-        })
-        //비밀번호 맞다면 토큰생성
-        user.generateToken((err, user) =>{
-            if(err) return res.status(400).send(err)
+            //비밀번호 맞다면 토큰생성
+            user.generateToken((err, user) =>{
+                if(err) return res.status(400).send(err)
 
-            res.cookie("x_auth",user.token)
-                .status(200)
-                .json({loginSuccess: true, userId: user._id})
+                res.cookie("x_auth",user.token)
+                    .status(200)
+                    .json({loginSuccess: true, userId: user._id})
 
+            })
         })
     })
+})
 
+app.get('/api/users/auth',auth ,(req,res) => {
+    //여기 까지 미들웨어를 통과해 왔다는 얘기는 Authentication이 true라는 말.
+    let authuser = req.user;
+    res.status(200).json({
+        _id: authuser._id,
+        isAdmin: authuser.role === 0 ? false : true,
+        isAuth: true,
+        email: authuser.email,
+        name: authuser.name,
+        lastname: authuser.lastname,
+        role: authuser.role,
+        image: authuser.image
+    })
+})
+
+app.get('/api/users/logout', auth, (req, res) => {
+    User.findOneAndUpdate({_id: req.user._id},
+        {token: ""}
+        ,(err, user) => {
+            if(err) return res.json({ success: false, err })
+            return  res.status(200).send({
+                success: true
+            })
+        })
 
 })
+
 app.listen(port, () => {
     console.log('Example app listening at http://localhost:'+port)
 })
