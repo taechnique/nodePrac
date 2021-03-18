@@ -56,7 +56,7 @@ app.post('/api/users/login',(req,res) =>{
         //비밀번호 확인
         user.comparePassword(req.body.password,(err,isMatch) => {
             if(!isMatch)
-                return res.json({loginSuccess: false, message:"비밀번호가 틀림"})
+                return res.json({loginSuccess: false, message: "비밀번호가 틀림"})
             //비밀번호 맞다면 토큰생성
             user.generateToken((err, user) =>{
                 if(err) return res.status(400).send(err)
